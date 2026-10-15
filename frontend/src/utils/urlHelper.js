@@ -18,18 +18,21 @@ export const getBaseApiUrl = () => {
 };
 
 export const getFullImageUrl = (url) => {
-  if (!url) return FALLBACK_IMAGE;
+  if (!url || typeof url !== 'string') return FALLBACK_IMAGE;
+  const cleanUrl = url.trim();
+  if (!cleanUrl) return FALLBACK_IMAGE;
+
   if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
+    cleanUrl.startsWith('http://') ||
+    cleanUrl.startsWith('https://') ||
+    cleanUrl.startsWith('blob:') ||
+    cleanUrl.startsWith('data:')
   ) {
-    return url;
+    return cleanUrl;
   }
 
   const baseUrl = getBaseApiUrl();
-  const path = url.startsWith('/') ? url : `/${url}`;
+  const path = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
 
   return `${baseUrl}${path}`;
 };
