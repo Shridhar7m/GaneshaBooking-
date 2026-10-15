@@ -79,8 +79,32 @@ const IdolForm = () => {
 
   // Multiple Image upload
   const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
+
+    // Check max limit (5 images max)
+    const availableSlots = 5 - formData.images.length;
+    if (availableSlots <= 0) {
+      setToastType('warning');
+      setToastMessage('Maximum 5 images allowed per idol. Remove existing images to upload new ones.');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    const files = rawFiles.slice(0, availableSlots);
+    if (rawFiles.length > availableSlots) {
+      setToastType('info');
+      setToastMessage(`Only uploading first ${availableSlots} images to respect the 5-image limit.`);
+    }
+
+    // Validate size (max 15MB)
+    const oversized = files.filter((f) => f.size > 15 * 1024 * 1024);
+    if (oversized.length > 0) {
+      setToastType('error');
+      setToastMessage('One or more selected files exceed the 15MB size limit.');
+      if (e.target) e.target.value = '';
+      return;
+    }
 
     const uploadData = new FormData();
     files.forEach((file) => {
@@ -93,20 +117,23 @@ const IdolForm = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.data && response.data.success) {
+      if (response.data && response.data.success && Array.isArray(response.data.urls)) {
         setFormData((prev) => ({
           ...prev,
           images: [...prev.images, ...response.data.urls],
         }));
         setToastType('success');
         setToastMessage(`Uploaded ${response.data.urls.length} images successfully.`);
+      } else {
+        throw new Error(response.data?.message || 'Server did not return uploaded image URLs');
       }
     } catch (err) {
       console.error('Image upload failed:', err);
       setToastType('error');
-      setToastMessage(err.response?.data?.message || 'Image upload failed. Allowed: JPG, PNG, WEBP up to 5MB.');
+      setToastMessage(err.response?.data?.message || err.message || 'Image upload failed. Allowed: JPG, PNG, WEBP.');
     } finally {
       setUploading(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -187,10 +214,6 @@ const IdolForm = () => {
     }
   };
 
-  // Safe absolute path resolving helper
-  const getFullImageUrl = (url) => {
-    return resolveFullImageUrl(url);
-  };
 
   if (loading) {
     return (
